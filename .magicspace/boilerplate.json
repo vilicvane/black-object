@@ -1,0 +1,19 @@
+{
+  "extends": "@mufan/code-boilerplates/typescript",
+  "options": {
+    "name": "black-object",
+    "repository": "https://github.com/vilic/black-object.git",
+    "license": "MIT",
+    "author": "vilicvane",
+    "tsProjects": [
+      {
+        "name": "library"
+      },
+      {
+        "name": "test",
+        "noEmit": true,
+        "references": ["library"]
+      }
+    ]
+  }
+}

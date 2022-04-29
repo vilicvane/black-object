@@ -1,14 +1,23 @@
-import {tuple} from 'x-value';
-import type {Type, TypeOf} from 'x-value';
+import {Type, deepEqual, tuple} from 'x-value';
+import type {TypeOf} from 'x-value';
 
-export function call<TParamTypeTuple extends [Type, ...Type[]] | []>(
+/**
+ * A Black Object script for function call, with optional implementation.
+ * @param ParamTypes Parameter type tuple, either an x-value type (e.g.,
+ * `x.string`) or a normal value that will be wrapped with `x.deepEqual(...)`.
+ */
+export function call<TParamTypeTuple extends [unknown, ...unknown[]] | []>(
   ParamTypes: TParamTypeTuple,
 ): {
   type: 'call';
   value: CallImplementation<TParamTypeTuple, void>;
 };
+/**
+ * @param implementation Function call implementation, will be used as return
+ * value if not a function.
+ */
 export function call<
-  TParamTypeTuple extends [Type, ...Type[]] | [],
+  TParamTypeTuple extends [unknown, ...unknown[]] | [],
   TImplementation,
 >(
   ParamTypes: TParamTypeTuple,
@@ -22,7 +31,7 @@ export function call<
     : CallImplementation<TParamTypeTuple, TImplementation>;
 };
 export function call(
-  ParamTypes: Type[],
+  ParamTypes: unknown[],
   implementation?: unknown,
 ): {
   type: 'call';
@@ -31,7 +40,11 @@ export function call(
   return {
     type: 'call',
     value: (...args) => {
-      tuple(...ParamTypes).satisfies(args);
+      tuple(
+        ...ParamTypes.map(ParamType =>
+          ParamType instanceof Type ? ParamType : deepEqual(ParamType),
+        ),
+      ).satisfies(args);
 
       return typeof implementation === 'function'
         ? implementation(...args)
@@ -40,6 +53,11 @@ export function call(
   };
 }
 
+/**
+ * A Black Object script for property get.
+ * @param implementation Property get implementation, will be used as return
+ * value if not a function.
+ */
 export function get<TImplementation>(implementation: TImplementation): {
   type: 'get';
   value: TImplementation extends (...args: unknown[]) => unknown
@@ -62,10 +80,18 @@ export function get(implementation: unknown): {
   };
 }
 
+/**
+ * A Black Object script for property set, with optional implementation.
+ * @param ParamTypes Value type, either an x-value type (e.g., `x.string`) or a
+ * normal value that will be wrapped with `x.deepEqual(...)`.
+ * @param implementation Property set implementation.
+ */
 export function set<
-  TValueType extends Type,
+  TValueType,
   TImplementation extends
-    | ((value: TypeOf<TValueType>) => boolean | void)
+    | ((
+        value: TValueType extends Type ? TypeOf<TValueType> : TValueType,
+      ) => boolean | void)
     | boolean,
 >(
   ValueType: TValueType,
@@ -73,11 +99,13 @@ export function set<
 ): {
   type: 'set';
   value: TImplementation extends boolean
-    ? (value: TypeOf<TValueType>) => TImplementation
+    ? (
+        value: TValueType extends Type ? TypeOf<TValueType> : TValueType,
+      ) => TImplementation
     : TImplementation;
 };
 export function set(
-  ValueType: Type,
+  ValueType: unknown,
   implementation?: ((value: unknown) => boolean | void) | boolean,
 ): {
   type: 'set';
@@ -86,7 +114,9 @@ export function set(
   return {
     type: 'set',
     value: value => {
-      ValueType.satisfies(value);
+      (ValueType instanceof Type ? ValueType : deepEqual(ValueType)).satisfies(
+        value,
+      );
 
       return typeof implementation === 'function'
         ? implementation?.(value)
@@ -95,6 +125,9 @@ export function set(
   };
 }
 
+/**
+ * A Black Object script for property update.
+ */
 export function property<TValue>(value: TValue): {
   type: 'property';
   value: TValue;
@@ -105,12 +138,12 @@ export function property<TValue>(value: TValue): {
   };
 }
 
-type __TypeOfTypeTuple<TTuple extends Type[]> = {
+type __TypeOfTypeTuple<TTuple extends unknown[]> = {
   [TIndex in keyof TTuple]: TTuple[TIndex] extends Type
     ? TypeOf<TTuple[TIndex]>
-    : never;
+    : TTuple[TIndex];
 };
 
-export type CallImplementation<TParamTypeTuple extends Type[], TReturn> = (
+export type CallImplementation<TParamTypeTuple extends unknown[], TReturn> = (
   ...args: __TypeOfTypeTuple<TParamTypeTuple>
 ) => TReturn;

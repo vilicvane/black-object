@@ -8,7 +8,7 @@ test('calls as scripts defined', () => {
 
   let blackObject = createBlackObject<BlackObject>([
     ['foo', call([])],
-    ['bar', call([x.literal(123)], true)],
+    ['bar', call([x.equal(123)], true)],
   ]);
 
   expect(blackObject.foo()).toBe(undefined);
@@ -25,7 +25,7 @@ test('unexpected call', () => {
 
   let blackObject = createBlackObject<BlackObject>([
     ['foo', call([])],
-    ['bar', call([x.literal(123)], true)],
+    ['bar', call([123], true)],
   ]);
 
   expect(blackObject.foo()).toBe(undefined);

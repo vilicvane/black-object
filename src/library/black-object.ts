@@ -2,6 +2,11 @@ const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 const PENDING_SCRIPT_SYMBOL = Symbol();
 
+/**
+ * Create a Black Object with predefined fallback partial and scripts.
+ * @param partial Partial to fallback if scripts not hit.
+ * @param scripts Scripts for call/get/set and property update.
+ */
 export function createBlackObject<T extends object>(
   partial: Partial<T>,
   scripts: Script<T>[],
@@ -141,6 +146,9 @@ export function createBlackObject(
   }
 }
 
+/**
+ * Throw an error if the scripts defined with the Black Object is not completed.
+ */
 export function assertScriptsCompleted(blackObject: object): void {
   if (!(blackObject as any)[PENDING_SCRIPT_SYMBOL]) {
     throw new Error('Black Object still has pending scripts');

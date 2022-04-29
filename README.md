@@ -20,19 +20,19 @@ yarn add black-object
 import {assertScriptsCompleted, call, createBlackObject, x} from 'black-object';
 
 interface Adapter {
-  stepOne(): void;
+  stepOne(value: number): void;
   stepTwo(value: string): boolean;
 }
 
 const adapter = createBlackObject<Adapter>([
-  ['stepOne', call([])],
+  ['stepOne', call([123])],
   ['stepTwo', call([x.string], true)],
 ]);
 
 // Error would be thrown if the following interactions failed to match the
 // scripts defined above.
 
-adapter.stepOne();
+adapter.stepOne(123);
 adapter.stepTwo('abc'); // true
 
 assertScriptsCompleted(adapter);

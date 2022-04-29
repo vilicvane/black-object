@@ -1,15 +1,15 @@
 name: CI
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: ['14', '16']
+        node-version: ['16']
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2

@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "tslib": "^2.4.0",
-    "x-value": "^0.0.1-8"
+    "x-value": "^0.0.1-18"
   },
   "devDependencies": {
     "@mufan/code": "^0.2.13",

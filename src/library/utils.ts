@@ -1,10 +1,9 @@
-import {Type, deepEqual, tuple} from 'x-value';
-import type {TypeOf} from 'x-value';
+import * as x from 'x-value';
 
 /**
  * A Black Object script for function call, with optional implementation.
  * @param ParamTypes Parameter type tuple, either an x-value type (e.g.,
- * `x.string`) or a normal value that will be wrapped with `x.deepEqual(...)`.
+ * `x.string`) or a normal value that will be wrapped with `x.equal(...)`.
  */
 export function call<TParamTypeTuple extends [unknown, ...unknown[]] | []>(
   ParamTypes: TParamTypeTuple,
@@ -40,9 +39,9 @@ export function call(
   return {
     type: 'call',
     value: (...args) => {
-      tuple(
+      x.tuple(
         ...ParamTypes.map(ParamType =>
-          ParamType instanceof Type ? ParamType : deepEqual(ParamType),
+          ParamType instanceof x.Type ? ParamType : x.equal(ParamType),
         ),
       ).satisfies(args);
 
@@ -83,14 +82,14 @@ export function get(implementation: unknown): {
 /**
  * A Black Object script for property set, with optional implementation.
  * @param ParamTypes Value type, either an x-value type (e.g., `x.string`) or a
- * normal value that will be wrapped with `x.deepEqual(...)`.
+ * normal value that will be wrapped with `x.equal(...)`.
  * @param implementation Property set implementation.
  */
 export function set<
   TValueType,
   TImplementation extends
     | ((
-        value: TValueType extends Type ? TypeOf<TValueType> : TValueType,
+        value: TValueType extends x.Type ? x.TypeOf<TValueType> : TValueType,
       ) => boolean | void)
     | boolean,
 >(
@@ -100,7 +99,7 @@ export function set<
   type: 'set';
   value: TImplementation extends boolean
     ? (
-        value: TValueType extends Type ? TypeOf<TValueType> : TValueType,
+        value: TValueType extends x.Type ? x.TypeOf<TValueType> : TValueType,
       ) => TImplementation
     : TImplementation;
 };
@@ -114,7 +113,7 @@ export function set(
   return {
     type: 'set',
     value: value => {
-      (ValueType instanceof Type ? ValueType : deepEqual(ValueType)).satisfies(
+      (ValueType instanceof x.Type ? ValueType : x.equal(ValueType)).satisfies(
         value,
       );
 
@@ -139,8 +138,8 @@ export function property<TValue>(value: TValue): {
 }
 
 type __TypeOfTypeTuple<TTuple extends unknown[]> = {
-  [TIndex in keyof TTuple]: TTuple[TIndex] extends Type
-    ? TypeOf<TTuple[TIndex]>
+  [TIndex in keyof TTuple]: TTuple[TIndex] extends x.Type
+    ? x.TypeOf<TTuple[TIndex]>
     : TTuple[TIndex];
 };
 

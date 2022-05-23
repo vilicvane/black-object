@@ -42,7 +42,7 @@ test('gets and sets with unmatched type', () => {
   expect(() => {
     blackObject.foo = 'def';
   }).toThrowErrorMatchingInlineSnapshot(`
-    "Value does not satisfy the type:
+    "Unexpected value:
       Unexpected value."
   `);
 });

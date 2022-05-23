@@ -49,7 +49,7 @@ test('unexpected call arguments', () => {
   expect(blackObject.foo()).toBe(undefined);
 
   expect(() => blackObject.bar(456)).toThrowErrorMatchingInlineSnapshot(`
-    "Value does not satisfy the type:
+    "Unexpected parameters:
       [0] Unexpected value."
   `);
 });
@@ -119,7 +119,7 @@ test('unexpected repeated call arguments', () => {
   expect(blackObject.bar(123)).toBe(true);
   expect(blackObject.foo()).toBe(undefined);
   expect(() => blackObject.bar(123)).toThrowErrorMatchingInlineSnapshot(`
-    "Value does not satisfy the type:
+    "Unexpected parameters:
       [0] Unexpected value."
   `);
 });

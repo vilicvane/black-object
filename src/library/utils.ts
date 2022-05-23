@@ -2,35 +2,37 @@ import * as x from 'x-value';
 
 /**
  * A Black Object script for function call, with optional implementation.
- * @param ParamTypes Parameter type tuple, either an x-value type (e.g.,
- * `x.string`) or a normal value that will be wrapped with `x.equal(...)`.
+ * @param ParamSchemas Parameter value schema tuple.
  */
-export function call<TParamTypeTuple extends [unknown, ...unknown[]] | []>(
-  ParamTypes: TParamTypeTuple,
+export function call<TParamSchemaTuple extends [unknown, ...unknown[]] | []>(
+  ParamSchemas: TParamSchemaTuple,
 ): {
   type: 'call';
-  value: CallImplementation<TParamTypeTuple, void>;
+  value: CallImplementation<TParamSchemaTuple, void>;
 };
 /**
  * @param implementation Function call implementation, will be used as return
  * value if not a function.
  */
 export function call<
-  TParamTypeTuple extends [unknown, ...unknown[]] | [],
+  TParamSchemaTuple extends [unknown, ...unknown[]] | [],
   TImplementation,
 >(
-  ParamTypes: TParamTypeTuple,
+  ParamSchemas: TParamSchemaTuple,
   implementation: TImplementation,
 ): {
   type: 'call';
   value: TImplementation extends (...args: unknown[]) => unknown
-    ? TImplementation extends CallImplementation<TParamTypeTuple, infer TReturn>
-      ? CallImplementation<TParamTypeTuple, TReturn>
+    ? TImplementation extends CallImplementation<
+        TParamSchemaTuple,
+        infer TReturn
+      >
+      ? CallImplementation<TParamSchemaTuple, TReturn>
       : never
-    : CallImplementation<TParamTypeTuple, TImplementation>;
+    : CallImplementation<TParamSchemaTuple, TImplementation>;
 };
 export function call(
-  ParamTypes: unknown[],
+  ParamSchemas: unknown[],
   implementation?: unknown,
 ): {
   type: 'call';
@@ -39,11 +41,11 @@ export function call(
   return {
     type: 'call',
     value: (...args) => {
-      x.tuple(
-        ...ParamTypes.map(ParamType =>
-          ParamType instanceof x.Type ? ParamType : x.equal(ParamType),
-        ),
-      ).satisfies(args);
+      let issues = diagnose(ParamSchemas, args, []);
+
+      if (issues.length > 0) {
+        throw new x.TypeConstraintError('Unexpected parameters', issues);
+      }
 
       return typeof implementation === 'function'
         ? implementation(...args)
@@ -81,30 +83,25 @@ export function get(implementation: unknown): {
 
 /**
  * A Black Object script for property set, with optional implementation.
- * @param ParamTypes Value type, either an x-value type (e.g., `x.string`) or a
- * normal value that will be wrapped with `x.equal(...)`.
+ * @param ValueSchema Parameter value schema.
  * @param implementation Property set implementation.
  */
 export function set<
-  TValueType,
+  TValueSchema,
   TImplementation extends
-    | ((
-        value: TValueType extends x.Type ? x.TypeOf<TValueType> : TValueType,
-      ) => boolean | void)
+    | ((value: __ResolveValueSchema<TValueSchema>) => boolean | void)
     | boolean,
 >(
-  ValueType: TValueType,
+  ValueSchema: TValueSchema,
   implementation?: TImplementation,
 ): {
   type: 'set';
   value: TImplementation extends boolean
-    ? (
-        value: TValueType extends x.Type ? x.TypeOf<TValueType> : TValueType,
-      ) => TImplementation
+    ? (value: __ResolveValueSchema<TValueSchema>) => TImplementation
     : TImplementation;
 };
 export function set(
-  ValueType: unknown,
+  ValueSchema: unknown,
   implementation?: ((value: unknown) => boolean | void) | boolean,
 ): {
   type: 'set';
@@ -113,9 +110,11 @@ export function set(
   return {
     type: 'set',
     value: value => {
-      (ValueType instanceof x.Type ? ValueType : x.equal(ValueType)).satisfies(
-        value,
-      );
+      let issues = diagnose(ValueSchema, value, []);
+
+      if (issues.length > 0) {
+        throw new x.TypeConstraintError('Unexpected value', issues);
+      }
 
       return typeof implementation === 'function'
         ? implementation?.(value)
@@ -137,12 +136,75 @@ export function property<TValue>(value: TValue): {
   };
 }
 
+export function diagnose(
+  schema: unknown,
+  value: unknown,
+  path: x.TypePath,
+): x.TypeIssue[] {
+  if (schema instanceof x.Type) {
+    return schema.diagnose(value).map(issue => {
+      return {
+        ...issue,
+        path: [...path, ...issue.path],
+      };
+    });
+  }
+
+  if (typeof schema === 'object' && schema !== null) {
+    if (Array.isArray(schema)) {
+      if (!Array.isArray(value)) {
+        throw new TypeError(`Expecting an array, got ${value}`);
+      }
+
+      return Array.from(schema).flatMap((elementSchema, index) =>
+        diagnose(elementSchema, value[index], [...path, index]),
+      );
+    } else if (Object.getPrototypeOf(schema) === Object.prototype) {
+      if (
+        typeof value !== 'object' ||
+        value === null ||
+        Object.getPrototypeOf(value) !== Object.prototype
+      ) {
+        throw new TypeError(`Expecting a plain object, got ${value}`);
+      }
+
+      return Object.entries(schema).flatMap(([key, valueSchema]) =>
+        diagnose(valueSchema, (value as any)[key], [...path, key]),
+      );
+    }
+  }
+
+  if (schema !== value) {
+    return [
+      {
+        path,
+        message: `Expecting ${schema}, got ${value}`,
+      },
+    ];
+  }
+
+  return [];
+}
+
 type __TypeOfTypeTuple<TTuple extends unknown[]> = {
-  [TIndex in keyof TTuple]: TTuple[TIndex] extends x.Type
-    ? x.TypeOf<TTuple[TIndex]>
-    : TTuple[TIndex];
+  [TIndex in keyof TTuple]: __ResolveValueSchema<TTuple[TIndex]>;
 };
 
 export type CallImplementation<TParamTypeTuple extends unknown[], TReturn> = (
   ...args: __TypeOfTypeTuple<TParamTypeTuple>
 ) => TReturn;
+
+export type __ResolveValueSchema<TSchema> = TSchema extends x.Type
+  ? x.TypeOf<TSchema>
+  : {
+      [TKey in keyof TSchema]: TSchema[TKey] extends
+        | string
+        | number
+        | bigint
+        | boolean
+        | symbol
+        | undefined
+        | null
+        ? TSchema[TKey]
+        : __ResolveValueSchema<TSchema[TKey]>;
+    };
